@@ -52,6 +52,7 @@ class LinearRegression(BaseEstimator):
         Fits model with or without an intercept depending on value of `self.include_intercept_`
         """
         # todo understand the intercept
+        # need to do pinv@
         if self.include_intercept_:
             self.coefs_ = np.linalg.lstsq(X, y)[0]
         else:
