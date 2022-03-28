@@ -1,3 +1,5 @@
+import sklearn
+
 from IMLearn import BaseEstimator
 from challenge.agoda_cancellation_estimator import AgodaCancellationEstimator
 from IMLearn.utils import split_train_test
@@ -26,7 +28,7 @@ def load_data(filename: str):
     # clean data for unrealistic shit
     full_data = pd.read_csv(filename).drop_duplicates()
 
-    full_data["cancellation_datetime"].fillna(value=0)
+    full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
 
     # starting with the numerical columns
     features = full_data[["hotel_id",
@@ -55,24 +57,22 @@ def load_data(filename: str):
         features[f] = features[f].astype(int)
 
     # todo check how to edit the date to get it into days
-    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"]).date()
-    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime']).date()
-    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date']).date()
-    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date']).date()
+    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
+    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime'])
+    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date'])
+    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date'])
 
-    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).days
-    features["length_of_stay"] = (full_data['checkout_date'] - full_data['checkin_date']).days
-    if full_data['cancellation_datetime'] == 0:
-        features["cancel_warning_days"] = 0
-    else:
-        features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).days
+    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
+    features["length_of_stay"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days
+    features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
 
     # defining binary label based on weather the person:
     # 1. reservation at least 15 days before checkin
     # 2. cancelled 2 to 7 days before booking
-    labels = full_data["cancellation_datetime"]
+    labels = features["cancel_warning_days"]
 
-
+    # todo filter the labels to 0 for not cacnel and 1 for cancel in time
+    # todo fill in missing values (nan) to 0 or something
     return features, labels
 
 
@@ -103,7 +103,8 @@ if __name__ == '__main__':
 
     # Load data
     df, cancellation_labels = load_data("../datasets/agoda_cancellation_train.csv")
-    train_X, train_y, test_X, test_y = split_train_test(df, cancellation_labels)
+
+    train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.25)
 
     # Fit model over data
     estimator = AgodaCancellationEstimator().fit(train_X, train_y)

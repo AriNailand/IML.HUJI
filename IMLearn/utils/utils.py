@@ -35,8 +35,8 @@ def split_train_test(X: pd.DataFrame, y: pd.Series, train_proportion: float = .7
 
     """
     # todo random numpy
-    train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(X, y, test_size=1-train_proportion)
-    return train_X, train_y, test_X, test_y
+    pass
+
 
 
 def confusion_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
