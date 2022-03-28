@@ -1,3 +1,4 @@
+from IMLearn import BaseEstimator
 from challenge.agoda_cancellation_estimator import AgodaCancellationEstimator
 from IMLearn.utils import split_train_test
 
@@ -21,13 +22,56 @@ def load_data(filename: str):
     3) Tuple of ndarray of shape (n_samples, n_features) and ndarray of shape (n_samples,)
     """
     # TODO - replace below code with any desired preprocessing
-    full_data = pd.read_csv(filename).dropna().drop_duplicates()
-    features = full_data[["h_booking_id",
-                          "hotel_id",
-                          "accommadation_type_name",
+    # todo what to do if data isnt full
+    # clean data for unrealistic shit
+    full_data = pd.read_csv(filename).drop_duplicates()
+
+    full_data["cancellation_datetime"].fillna(value=0)
+
+    # starting with the numerical columns
+    features = full_data[["hotel_id",
                           "hotel_star_rating",
-                          "customer_nationality"]]
+                          "guest_is_not_the_customer",
+                          "no_of_adults",
+                          "no_of_children",
+                          "no_of_extra_bed",
+                          "no_of_room",
+                          "original_selling_amount",
+                          "is_user_logged_in",
+                          "is_first_booking",
+                          "request_nonesmoke",
+                          "request_highfloor",
+                          "request_largebed",
+                          "request_twinbeds",
+                          "request_airport",
+                          "request_earlycheckin",
+                          "hotel_area_code",
+                          "hotel_brand_code",
+                          "hotel_chain_code",
+                          "hotel_city_code"
+                          ]]
+
+    for f in ["is_user_logged_in", "is_first_booking"]:
+        features[f] = features[f].astype(int)
+
+    # todo check how to edit the date to get it into days
+    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"]).date()
+    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime']).date()
+    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date']).date()
+    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date']).date()
+
+    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).days
+    features["length_of_stay"] = (full_data['checkout_date'] - full_data['checkin_date']).days
+    if full_data['cancellation_datetime'] == 0:
+        features["cancel_warning_days"] = 0
+    else:
+        features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).days
+
+    # defining binary label based on weather the person:
+    # 1. reservation at least 15 days before checkin
+    # 2. cancelled 2 to 7 days before booking
     labels = full_data["cancellation_datetime"]
+
 
     return features, labels
 
