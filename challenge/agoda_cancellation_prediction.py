@@ -28,55 +28,12 @@ def load_data(filename: str):
     # clean data for unrealistic shit
     full_data = pd.read_csv(filename).drop_duplicates()
 
-    full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
+    features, labels = preprocessor(full_data)
 
-    # starting with the numerical columns
-    features = full_data[["hotel_id",
-                          "hotel_star_rating",
-                          "guest_is_not_the_customer",
-                          "no_of_adults",
-                          "no_of_children",
-                          "no_of_extra_bed",
-                          "no_of_room",
-                          "original_selling_amount",
-                          "is_user_logged_in",
-                          "is_first_booking",
-                          "request_nonesmoke",
-                          "request_highfloor",
-                          "request_largebed",
-                          "request_twinbeds",
-                          "request_airport",
-                          "request_earlycheckin",
-                          "hotel_area_code",
-                          "hotel_brand_code",
-                          "hotel_chain_code",
-                          "hotel_city_code"
-                          ]]
-
-    for f in ["is_user_logged_in", "is_first_booking"]:
-        features[f] = features[f].astype(int)
-
-    # todo check how to edit the date to get it into days
-    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
-    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime'])
-    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date'])
-    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date'])
-
-    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
-    features["length_of_stay"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days
-    features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
-
-    # defining binary label based on weather the person:
-    # 1. reservation at least 15 days before checkin
-    # 2. cancelled 2 to 7 days before booking
-    labels = features["cancel_warning_days"]
-
-    # todo filter the labels to 0 for not cacnel and 1 for cancel in time
-    # todo fill in missing values (nan) to 0 or something
     return features, labels
 
-
-def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str):
+# todo remove test_y
+def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str, test_y):
     """
     Export to specified file the prediction results of given estimator on given testset.
 
@@ -95,7 +52,49 @@ def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str):
         path to store file at
 
     """
-    pd.DataFrame(estimator.predict(X), columns=["predicted_values"]).to_csv(filename, index=False)
+    y_pred = estimator.predict(X)
+    pd.DataFrame(y_pred, columns=["predicted_values"]).to_csv(filename, index=False)
+    print(sklearn.metrics.roc_auc_score(test_y, y_pred))
+
+
+def preprocessor(full_data: np.ndarray):
+    full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
+
+    # starting with the numerical columns
+    features = full_data[["hotel_star_rating",
+                          "guest_is_not_the_customer",
+                          "original_selling_amount",
+                          "is_user_logged_in",
+                          "is_first_booking",
+                          "original_payment_type",
+                          "charge_option",
+                          "original_payment_currency",
+                          ]].fillna(0)
+
+    for f in ["is_user_logged_in", "is_first_booking"]:
+        features[f] = features[f].astype(int)
+
+    # todo check how to edit the date to get it into days
+    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
+    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime'])
+    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date'])
+    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date'])
+
+    features = pd.get_dummies(features, columns=["original_payment_type",
+                                                 "charge_option",
+                                                 "original_payment_currency"])
+
+    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
+    features["length_of_stay"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days
+    features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
+    features["days_cancelled_after_booking"] = (full_data["cancellation_datetime"] - full_data["booking_datetime"]).dt.days
+    # defining binary label based on weather the person:
+    # 1. reservation at least 15 days before checkin
+    # 2. cancelled 2 to 7 days before booking
+
+    labels = (7 <= features["days_cancelled_after_booking"]) & (features["days_cancelled_after_booking"] <= 43) & (features["cancel_warning_days"] > 2)
+
+    return features, labels
 
 
 if __name__ == '__main__':
@@ -110,4 +109,4 @@ if __name__ == '__main__':
     estimator = AgodaCancellationEstimator().fit(train_X, train_y)
 
     # Store model predictions over test set
-    evaluate_and_export(estimator, test_X, "id1_id2_id3.csv")
+    evaluate_and_export(estimator, test_X, "342473642_206200552_316457340.csv", test_y)
