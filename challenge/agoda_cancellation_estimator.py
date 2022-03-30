@@ -27,7 +27,6 @@ class AgodaCancellationEstimator(BaseEstimator):
         super().__init__()
         # todo change max iterations
         self.logistic_regression = LogisticRegression(max_iter=10000)
-        #self.svm = SVC(gamma='scale')
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
@@ -46,8 +45,6 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         self.logistic_regression.fit(X, y)
-        # todo play with sample weights
-        #self.svm.fit(X, y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -64,12 +61,10 @@ class AgodaCancellationEstimator(BaseEstimator):
             Predicted responses of given samples
         """
         # todo need to preprocess the array
-        # features, labels = preprocessor(X)
-        THRESH = 0.04
+        THRESH = 0.3  # todo check this
         threshold_taker = lambda x: 1 if x > THRESH else 0
         vfunc = np.vectorize(threshold_taker)
         return vfunc(self.logistic_regression.predict_proba(X).T[1])
-        # return self.svm.predict(X)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
