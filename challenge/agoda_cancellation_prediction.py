@@ -138,7 +138,7 @@ def preprocessor(full_data: np.ndarray):
     features["days_cancelled_after_booking"] = (full_data["cancellation_datetime"] - full_data["booking_datetime"]).dt.days
 
     features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights']), axis=1)
-    features[['1','2','3','4','5']] = pd.DataFrame(features['B'].tolist(), index=features.index)
+    features[['cd1','cp1','cd2','cp2', 'ns']] = pd.DataFrame(features['B'].tolist(), index=features.index)
     del features["cancellation_policy_code"]
     del features['B']
 
