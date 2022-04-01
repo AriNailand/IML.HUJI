@@ -40,6 +40,63 @@ def cancel_parser(policy: str, nights_num):
 
         return days1, amount1, days2, amount2, noshow
 
+
+def training_preprocessor(full_data: np.ndarray):
+    # fill cancellation datetime which doesn't exist as 0
+    print(len(full_data[full_data["cancellation_datetime"].isnull()])/len(full_data))
+    full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
+    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
+
+    features = testing_preprocessor(full_data)
+    full_data["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
+    full_data["days_cancelled_after_booking"] = (full_data["cancellation_datetime"] - full_data["booking_datetime"]).dt.days
+
+    # todo find relationship between cancellation policy date, P  and cancel date
+    labels = (7 <= full_data["days_cancelled_after_booking"]) & (full_data["days_cancelled_after_booking"] <= 43)
+    # labels = (full_data["cancel_warning_days"] != 0)
+    return features, labels
+
+
+def testing_preprocessor(full_data):
+    # starting with the numerical and boolean columns
+    features = full_data[["hotel_star_rating",
+                          "guest_is_not_the_customer",
+                          "original_selling_amount",
+                          "is_user_logged_in",
+                          "is_first_booking",
+                          "cancellation_policy_code"
+                          ]].fillna(0)
+
+    # how much the customer cares about his order
+    features["num_requests"] = (full_data["request_nonesmoke"].fillna(0) +
+                                full_data["request_latecheckin"].fillna(0) +
+                                full_data["request_highfloor"].fillna(0) +
+                                full_data["request_largebed"].fillna(0) +
+                                full_data["request_twinbeds"].fillna(0) +
+                                full_data["request_airport"].fillna(0) +
+                                full_data["request_earlycheckin"].fillna(0))
+
+    # change to numerical
+    for f in ["is_user_logged_in", "is_first_booking"]:
+        features[f] = features[f].astype(int)
+
+    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime'])
+    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date'])
+    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date'])
+
+    # add date connected numerical columns
+    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
+    features["num_nights"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days - 1
+
+
+    features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights']), axis=1)
+    features[['cd1', 'cp1', 'cd2', 'cp2', 'ns']] = pd.DataFrame(features['B'].tolist(), index=features.index)
+    del features["cancellation_policy_code"]
+    del features['B']
+
+    return features
+
+
 def load_data(filename: str):
     """
     Load Agoda booking cancellation dataset
@@ -59,7 +116,7 @@ def load_data(filename: str):
     # clean data for unrealistic shit
     full_data = pd.read_csv(filename).drop_duplicates()
 
-    features, labels = preprocessor(full_data)
+    features, labels = training_preprocessor(full_data)
 
     return features, labels
 
@@ -84,69 +141,13 @@ def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str, 
         path to store file at
 
     """
-    y_pred = estimator.predict(X)
+    y_pred = pd.DataFrame(estimator.predict(X), columns=["predicted_values"])
+    y_pred['predicted_values'] = y_pred['predicted_values'].replace([1,0,...],['cancel','not-cancel',...])
     pd.DataFrame(y_pred, columns=["predicted_values"]).to_csv(filename, index=False)
     # print("Area Under Curve: ", sklearn.metrics.roc_auc_score(test_y, y_pred))
     # print("Accuracy: ", sklearn.metrics.accuracy_score(test_y, y_pred))
-    print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
-    print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
-
-
-def preprocessor(full_data: np.ndarray):
-    # fill cancellation datetime which doesn't exist as 0
-    full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
-
-    # starting with the numerical and boolean columns
-    features = full_data[["hotel_star_rating",
-                          "guest_is_not_the_customer",
-                          "original_selling_amount",
-                          "is_user_logged_in",
-                          "is_first_booking",
-                          "original_payment_type",
-                          "charge_option",
-                          "original_payment_currency",
-                          "cancellation_policy_code"
-                          ]].fillna(0)
-
-    # how much the customer cares about his order
-    features["num_requests"] = (full_data["request_nonesmoke"].fillna(0) +
-                                full_data["request_latecheckin"].fillna(0) +
-                                full_data["request_highfloor"].fillna(0) +
-                                full_data["request_largebed"].fillna(0) +
-                                full_data["request_twinbeds"].fillna(0) +
-                                full_data["request_airport"].fillna(0) +
-                                full_data["request_earlycheckin"].fillna(0))
-
-    # change to numerical
-    for f in ["is_user_logged_in", "is_first_booking"]:
-        features[f] = features[f].astype(int)
-
-    full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
-    full_data['booking_datetime'] = pd.to_datetime(full_data['booking_datetime'])
-    full_data['checkin_date'] = pd.to_datetime(full_data['checkin_date'])
-    full_data['checkout_date'] = pd.to_datetime(full_data['checkout_date'])
-
-    # make categorical features
-    features = pd.get_dummies(features, columns=["original_payment_type",
-                                                 "charge_option",
-                                                 "original_payment_currency"])
-
-    # add date connected numerical columns
-    features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
-    features["num_nights"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days - 1
-    features["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
-    features["days_cancelled_after_booking"] = (full_data["cancellation_datetime"] - full_data["booking_datetime"]).dt.days
-
-    features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights']), axis=1)
-    features[['cd1','cp1','cd2','cp2', 'ns']] = pd.DataFrame(features['B'].tolist(), index=features.index)
-    del features["cancellation_policy_code"]
-    del features['B']
-
-    # todo find relationship between cancellation policy date, P  and cancel date
-    labels = (7 <= features["days_cancelled_after_booking"]) & (features["days_cancelled_after_booking"] <= 43)
-    # labels = (features['cancel_warning_days'] != 0)
-
-    return features, labels
+    # print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
+    # print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
 
 
 if __name__ == '__main__':
@@ -155,10 +156,11 @@ if __name__ == '__main__':
     # Load data
     df, cancellation_labels = load_data("../datasets/agoda_cancellation_train.csv")
 
-    train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
+    # train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
 
     # Fit model over data
-    estimator = AgodaCancellationEstimator().fit(train_X, train_y)
+    estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
 
     # Store model predictions over test set
-    evaluate_and_export(estimator, test_X, "342473642_206200552_316457340.csv", test_y)
+    test_set = pd.read_csv("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/challenge/test_set_week_1.csv").drop_duplicates()
+    evaluate_and_export(estimator, testing_preprocessor(test_set), "342473642_206200552_316457340.csv", 0)
