@@ -25,7 +25,6 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         super().__init__()
-        # todo change max iterations
         self.logistic_regression = LogisticRegression(max_iter=10000)
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -60,10 +59,12 @@ class AgodaCancellationEstimator(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        # todo need to preprocess the array
-        THRESH = 0.3  # todo check this
+        THRESH = 0.4
+
         threshold_taker = lambda x: 1 if x > THRESH else 0
+
         vfunc = np.vectorize(threshold_taker)
+
         return vfunc(self.logistic_regression.predict_proba(X).T[1])
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
