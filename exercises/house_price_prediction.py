@@ -88,6 +88,7 @@ def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") ->
         figure = px.scatter(pd.DataFrame({'x': X[f], 'y': y}), x="x", y="y", trendline="ols",
                             title=f'Correlation Between {f} Values and Response <br>Pearson Correlation {pearson_corr}',
                             labels={"x": f"{f} Values", "y": "Response Values"})
+
         figure.write_image(output_path % f)
 
 
