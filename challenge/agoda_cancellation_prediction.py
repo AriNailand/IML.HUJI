@@ -43,7 +43,6 @@ def cancel_parser(policy: str, nights_num):
 
 def training_preprocessor(full_data: np.ndarray):
     # fill cancellation datetime which doesn't exist as 0
-    print(len(full_data[full_data["cancellation_datetime"].isnull()])/len(full_data))
     full_data.loc[full_data["cancellation_datetime"].isnull(), "cancellation_datetime"] = full_data["checkin_date"]
     full_data['cancellation_datetime'] = pd.to_datetime(full_data["cancellation_datetime"])
 
@@ -88,7 +87,7 @@ def testing_preprocessor(full_data):
     features["days_to_checkin"] = (full_data["checkin_date"] - full_data["booking_datetime"]).dt.days
     features["num_nights"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days - 1
 
-
+    # deal with cancellation policy code
     features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights']), axis=1)
     features[['cd1', 'cp1', 'cd2', 'cp2', 'ns']] = pd.DataFrame(features['B'].tolist(), index=features.index)
     del features["cancellation_policy_code"]
@@ -142,7 +141,6 @@ def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str, 
 
     """
     y_pred = pd.DataFrame(estimator.predict(X), columns=["predicted_values"])
-    y_pred['predicted_values'] = y_pred['predicted_values'].replace([1,0,...],['cancel','not-cancel',...])
     pd.DataFrame(y_pred, columns=["predicted_values"]).to_csv(filename, index=False)
     # print("Area Under Curve: ", sklearn.metrics.roc_auc_score(test_y, y_pred))
     # print("Accuracy: ", sklearn.metrics.accuracy_score(test_y, y_pred))

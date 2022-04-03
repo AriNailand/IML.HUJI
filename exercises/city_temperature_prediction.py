@@ -1,4 +1,3 @@
-import IMLearn.learners.regressors.linear_regression
 from IMLearn.learners.regressors import PolynomialFitting
 from IMLearn.utils import split_train_test
 
@@ -6,6 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+
 pio.templates.default = "simple_white"
 
 
@@ -47,16 +47,20 @@ if __name__ == '__main__':
     israel_data = full_data[full_data["Country"] == "Israel"]
     # day of year vs temp plot
     israel_data["Year"] = israel_data["Year"].astype(str)
-    fig1 = px.scatter(israel_data, x="DayOfYear", y="Temp", color="Year")
+    fig1 = px.scatter(israel_data, x="DayOfYear", y="Temp", color="Year", title="Temperature By The Day of Year")
     fig1.show()
     # bar plot of std of each month
     std_of_months = israel_data.groupby(['Month']).Temp.agg(['std'])
-    fig2 = px.bar(std_of_months, y='std')
+    fig2 = px.bar(std_of_months, y='std',
+                  labels={'std': 'SD', 'x': 'Month'},
+                  title="SD of Temperature By Month")
     fig2.show()
 
     # Question 3 - Exploring differences between countries
     mean_std_country_month = full_data.groupby(['Month', 'Country']).Temp.agg(['std', 'mean']).reset_index()
-    fig3 = px.line(mean_std_country_month, x=['Month'], y='mean', error_y='std', color='Country')
+    fig3 = px.line(mean_std_country_month, x=['Month'], y='mean', error_y='std', color='Country',
+                   labels={'x': "Month", "y": "Temp Mean"},
+                   title="Average Temperature by Month with Confidence Interval")
     fig3.show()
 
     # Question 4 - Fitting model for different values of `k`
@@ -68,7 +72,9 @@ if __name__ == '__main__':
         loss = np.round(poly_fit.loss(test_X, test_y), decimals=2)
         test_loss.append(loss)
         print(f'Test Loss for k = {k}: {loss}')
-    fig4 = px.bar(y=test_loss)
+    fig4 = px.bar(x=range(1, 11), y=test_loss,
+                  labels={'y': 'test_loss', 'x': 'degree k'},
+                  title="Test Loss by The Degree K")
     fig4.show()
 
     # Question 5 - Evaluating fitted model on different countries
@@ -81,6 +87,7 @@ if __name__ == '__main__':
         country_data = full_data[full_data["Country"] == country]
         test_lost_israel_fitted.append(poly_fit.loss(country_data["DayOfYear"], country_data["Temp"]))
 
-    fig5 = px.bar(x=countries, y=test_lost_israel_fitted)
+    fig5 = px.bar(x=countries, y=test_lost_israel_fitted,
+                  labels={"y": "test_loss", "x": "countries"},
+                  title="Test Loss Per Country")
     fig5.show()
-

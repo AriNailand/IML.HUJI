@@ -4,7 +4,6 @@ from typing import NoReturn
 from IMLearn.base import BaseEstimator
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
 
 
 class AgodaCancellationEstimator(BaseEstimator):
@@ -25,7 +24,7 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         super().__init__()
-        self.logistic_regression = LogisticRegression(max_iter=10000)
+        self.logistic_regression = LogisticRegression(max_iter=20000)
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
