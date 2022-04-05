@@ -81,7 +81,7 @@ if __name__ == '__main__':
     K = 5  # lowest loss on the samples
     full_data = full_data.drop(["City", "Year", "Month", "Year", "Date", "Day"], axis=1)
     poly_fit = PolynomialFitting(K).fit(israel_data["DayOfYear"], israel_data["Temp"])
-    countries = ["Israel", "South Africa", "Jordan", "The Netherlands"]
+    countries = ["South Africa", "Jordan", "The Netherlands"]
     test_lost_israel_fitted = []
     for country in countries:
         country_data = full_data[full_data["Country"] == country]

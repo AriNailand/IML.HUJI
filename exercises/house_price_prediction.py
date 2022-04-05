@@ -99,20 +99,21 @@ if __name__ == '__main__':
     design_mat, response_vec = load_data("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/house_prices.csv")
 
     # Question 2 - Feature evaluation with respect to response
+    # todo return
     feature_evaluation(design_mat, response_vec, "Pearson_Correlation_%s.png")
 
     # Question 3 - Split samples into training- and testing sets.
     train_X, train_y, test_X, test_y = split_train_test(design_mat, response_vec)
 
+    training_data = pd.concat([train_X, train_y], axis=1)
     # Question 4 - Fit model over increasing percentages of the overall training data
     avg_loss, var_loss = [], []
     for p in range(10, 101):
         loss = []
         for time in range(10):
-            indexes = np.random.randint(0, train_X.shape[0] - 1, int((p / 100) * train_X.shape[0]))
-            train_sample_X = np.asarray(train_X)[indexes]
-            train_sample_y = np.asarray(train_y)[indexes]
-            fitted_model = LinearRegression().fit(train_sample_X, train_sample_y)
+            ts = training_data.sample(frac=p/100, replace=False)
+            train_sample_X, train_sample_y = ts.drop(["price"], axis=1), ts["price"]
+            fitted_model = LinearRegression(include_intercept=False).fit(train_sample_X, train_sample_y)
             loss.append(fitted_model.loss(test_X, test_y))
         avg_loss.append(np.sum(np.asarray(loss)) / 10)
         var_loss.append(np.std(np.asarray(loss)))
@@ -128,3 +129,5 @@ if __name__ == '__main__':
     fig.update_layout(title_text="Mean loss as function of p%", xaxis_title="p% of training samples",
                       yaxis_title="Loss")
     fig.show()
+
+

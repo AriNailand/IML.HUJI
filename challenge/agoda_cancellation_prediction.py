@@ -142,10 +142,16 @@ def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str, 
     """
     y_pred = pd.DataFrame(estimator.predict(X), columns=["predicted_values"])
     pd.DataFrame(y_pred, columns=["predicted_values"]).to_csv(filename, index=False)
-    # print("Area Under Curve: ", sklearn.metrics.roc_auc_score(test_y, y_pred))
-    # print("Accuracy: ", sklearn.metrics.accuracy_score(test_y, y_pred))
-    # print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
-    # print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
+
+
+def hunger_games():
+    train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
+    estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
+    y_pred = estimator.predict(test_X)
+    print("Area Under Curve: ", sklearn.metrics.roc_auc_score(test_y, y_pred))
+    print("Accuracy: ", sklearn.metrics.accuracy_score(test_y, y_pred))
+    print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
+    print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
 
 
 if __name__ == '__main__':
@@ -154,11 +160,10 @@ if __name__ == '__main__':
     # Load data
     df, cancellation_labels = load_data("../datasets/agoda_cancellation_train.csv")
 
-    # train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
+    # train part
+    hunger_games()
 
-    # Fit model over data
-    estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
-
-    # Store model predictions over test set
-    test_set = pd.read_csv("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/challenge/test_set_week_1.csv").drop_duplicates()
-    evaluate_and_export(estimator, testing_preprocessor(test_set), "342473642_206200552_316457340.csv", 0)
+    # submission part
+    # estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
+    # test_set = pd.read_csv("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/challenge/test_set_week_1.csv").drop_duplicates()
+    # evaluate_and_export(estimator, testing_preprocessor(test_set), "342473642_206200552_316457340.csv", 0)
