@@ -4,6 +4,10 @@ from typing import NoReturn
 from IMLearn.base import BaseEstimator
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
 
 class AgodaCancellationEstimator(BaseEstimator):
@@ -24,7 +28,10 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         super().__init__()
-        self.logistic_regression = LogisticRegression(max_iter=20000)
+        self.logistic_regression = LogisticRegression(max_iter=10000)
+        #self.linear_regressor = LinearRegression()
+        #self.random_forest_regressor = RandomForestRegressor()
+        #self.random_forest_classifier = RandomForestClassifier()
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
@@ -43,6 +50,9 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         self.logistic_regression.fit(X, y)
+        #self.random_forest_regressor.fit(X, y)
+        #self.linear_regressor.fit(X,y)
+        #self.random_forest_classifier.fit(X, y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -58,13 +68,13 @@ class AgodaCancellationEstimator(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        THRESH = 0.4
-
+        THRESH = 0.3
         threshold_taker = lambda x: 1 if x > THRESH else 0
-
         vfunc = np.vectorize(threshold_taker)
-
         return vfunc(self.logistic_regression.predict_proba(X).T[1])
+        # self.random_forest_regressor.predict(X)
+        # self.linear_regressor.predict(X)
+       #self.random_forest_classifier.predict(X)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -83,5 +93,6 @@ class AgodaCancellationEstimator(BaseEstimator):
         loss : float
             Performance under loss function
         """
-        # todo by true predictions and false predictions
-        pass
+        pred = self._predict(X)
+        return mean_squared_error(pred, y)
+

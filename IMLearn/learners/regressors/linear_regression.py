@@ -93,4 +93,3 @@ class LinearRegression(BaseEstimator):
         """
         y_predict = self.predict(X)
         return mean_square_error(y, y_predict)
-
