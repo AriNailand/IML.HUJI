@@ -2,6 +2,7 @@ from IMLearn.learners.classifiers import Perceptron, LDA, GaussianNaiveBayes
 import numpy as np
 from typing import Tuple
 import plotly.graph_objects as go
+import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 pio.templates.default = "simple_white"
@@ -29,6 +30,11 @@ def load_dataset(filename: str) -> Tuple[np.ndarray, np.ndarray]:
     raise NotImplementedError()
 
 
+def perceptron_iteration_callback(perceptron: Perceptron, curr_sample: np.ndarray, curr_response: int):
+    # todo
+    pass
+
+
 def run_perceptron():
     """
     Fit and plot fit progression of the Perceptron algorithm over both the linearly separable and inseparable datasets
@@ -36,16 +42,21 @@ def run_perceptron():
     Create a line plot that shows the perceptron algorithm's training loss values (y-axis)
     as a function of the training iterations (x-axis).
     """
-    for n, f in [("Linearly Separable", "linearly_separable.npy"), ("Linearly Inseparable", "linearly_inseparable.npy")]:
+    for n, f in [("Linearly Separable", "/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/linearly_separable.npy"),
+                 ("Linearly Inseparable", "/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/linearly_inseparable.npy")]:
         # Load dataset
-        raise NotImplementedError()
-
+        loss = []
+        data_set = np.load(f)
         # Fit Perceptron and record loss in each fit iteration
-        losses = []
-        raise NotImplementedError()
-
+        X, y = data_set[:, :2], data_set[:, -1]
+        perceptron_classifier = Perceptron(callback=lambda p: loss.append(p.loss(X, y)))
+        perceptron_classifier.fit(X, y)
         # Plot figure
-        raise NotImplementedError()
+        fig = px.line(x=range(len(loss)),
+                      y=loss,
+                      title=f'Perception Training loss per Iteration: {n} data',
+                      labels=dict(x="Iterations", y="Training Loss"))
+        fig.show()
 
 
 def compare_gaussian_classifiers():
