@@ -4,6 +4,7 @@ from typing import Tuple
 import plotly.graph_objects as go
 import plotly.express as px
 import plotly.io as pio
+from IMLearn.metrics import accuracy
 from plotly.subplots import make_subplots
 pio.templates.default = "simple_white"
 
@@ -27,12 +28,9 @@ def load_dataset(filename: str) -> Tuple[np.ndarray, np.ndarray]:
         Class vector specifying for each sample its class
 
     """
-    raise NotImplementedError()
-
-
-def perceptron_iteration_callback(perceptron: Perceptron, curr_sample: np.ndarray, curr_response: int):
-    # todo
-    pass
+    dataset = np.load(filename)
+    X, y = dataset[:, :2], dataset[:, -1]
+    return X, y
 
 
 def run_perceptron():
@@ -46,9 +44,9 @@ def run_perceptron():
                  ("Linearly Inseparable", "/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/linearly_inseparable.npy")]:
         # Load dataset
         loss = []
-        data_set = np.load(f)
+        dataset = np.load(f)
         # Fit Perceptron and record loss in each fit iteration
-        X, y = data_set[:, :2], data_set[:, -1]
+        X, y = dataset[:, :2], dataset[:, -1]
         perceptron_classifier = Perceptron(callback=lambda p: loss.append(p.loss(X, y)))
         perceptron_classifier.fit(X, y)
         # Plot figure
@@ -63,20 +61,35 @@ def compare_gaussian_classifiers():
     """
     Fit both Gaussian Naive Bayes and LDA classifiers on both gaussians1 and gaussians2 datasets
     """
-    for f in ["gaussian1.npy", "gaussian2.npy"]:
+    for n, f in [("gaussian1", "/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/gaussian1.npy"),
+                 ("gaussian2", "/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/datasets/gaussian2.npy")]:
         # Load dataset
-        raise NotImplementedError()
+        X, y = load_dataset(f)
 
         # Fit models and predict over training set
-        raise NotImplementedError()
+        lda = LDA().fit(X, y)
+        lda_predict = lda.predict(X)
+        lda_accuracy = accuracy(y, lda_predict)
+
+        gnb = GaussianNaiveBayes().fit(X, y)
+        gnb_predict = gnb.predict(X)
+        gnb_accuracy = accuracy(y, gnb_predict)
+
 
         # Plot a figure with two suplots, showing the Gaussian Naive Bayes predictions on the left and LDA predictions
         # on the right. Plot title should specify dataset used and subplot titles should specify algorithm and accuracy
-        from IMLearn.metrics import accuracy
-        raise NotImplementedError()
+        fig = make_subplots(rows=1, cols=2, start_cell="bottom-left")
+
+        # todo add markers colours and names
+        fig.add_trace(go.Scatter(x=X[:,:1], y=X[:,-1]), row=1, col=1, color=gnb_predict)
+
+        fig.add_trace(go.Scatter(x=X[:,:1], y=X[:,-1]), row=1, col=2, color=lda_predict)
+
+        fig.show()
+
 
 
 if __name__ == '__main__':
     np.random.seed(0)
-    run_perceptron()
+    # run_perceptron()
     compare_gaussian_classifiers()
