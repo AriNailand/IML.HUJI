@@ -10,7 +10,7 @@ import re
 PATTERN = re.compile(r"((?P<days1>[1-9]\d*)D(?P<amount1>[1-9]\d*[NP])_)?((?P<days2>[1-9]\d*)D(?P<amount2>[1-9]\d*[NP])_)?(?P<noshow>[1-9]\d*[NP])?")
 
 
-def cancel_parser(policy: str, nights_num, price):
+def cancel_parser(policy: str, nights_num):
     if nights_num <= 0:
         nights_num = 1
     match = PATTERN.match(policy)
@@ -19,6 +19,7 @@ def cancel_parser(policy: str, nights_num, price):
     else:
         noshow = match.group("noshow")
         noshow = 1 if noshow is None else int(noshow[:-1])/100 if noshow[-1] == 'P' else int(noshow[:-1]) / nights_num
+
         days1 = match.group("days1")
         if days1 is None:
             days1 = 0
@@ -47,14 +48,11 @@ def training_preprocessor(full_data: np.ndarray):
 
     features = testing_preprocessor(full_data)
     full_data["cancel_warning_days"] = (full_data['checkin_date'] - full_data['cancellation_datetime']).dt.days
-    # todo check this condition -> need to correct if changing strategy
     full_data["days_cancelled_after_booking"] = (full_data["cancellation_datetime"] - full_data["booking_datetime"]).dt.days
-    full_data["months_cancelled_after_booking"] = (full_data["cancellation_datetime"].dt.month - full_data["booking_datetime"].dt.month) % 12
 
-    # todo predict the amount of days to cancel then reconvert it
+    # todo find relationship between cancellation policy date, P  and cancel date
     labels = (7 <= full_data["days_cancelled_after_booking"]) & (full_data["days_cancelled_after_booking"] <= 43)
     # labels = (full_data["cancel_warning_days"] != 0)
-    #labels = full_data["days_cancelled_after_booking"]
     return features, labels
 
 
@@ -90,10 +88,8 @@ def testing_preprocessor(full_data):
     features["num_nights"] = (full_data['checkout_date'] - full_data['checkin_date']).dt.days - 1
 
     # deal with cancellation policy code
-    features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights'], x['original_selling_amount']), axis=1)
+    features['B'] = features.apply(lambda x: cancel_parser(x['cancellation_policy_code'], x['num_nights']), axis=1)
     features[['cd1', 'cp1', 'cd2', 'cp2', 'ns']] = pd.DataFrame(features['B'].tolist(), index=features.index)
-
-    del features['original_selling_amount']
     del features["cancellation_policy_code"]
     del features['B']
 
@@ -146,22 +142,10 @@ def evaluate_and_export(estimator: BaseEstimator, X: np.ndarray, filename: str, 
     """
     y_pred = pd.DataFrame(estimator.predict(X), columns=["predicted_values"])
     pd.DataFrame(y_pred, columns=["predicted_values"]).to_csv(filename, index=False)
-
-
-def hunger_games():
-    # split so we have all data in training
-    train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
-    estimator = AgodaCancellationEstimator().fit(train_X, train_y)
-
-    # train on train set test on week 1 labels
-    # full_data = pd.read_csv("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/challenge/test_set_week_1_updated.csv").drop_duplicates()
-    # test_X, test_y = testing_preprocessor(full_data.drop(["h_booking_id|label"], axis=1)), full_data["h_booking_id|label"]
-    # test_y = test_y.apply(lambda x: x[-1]).astype('int')
-
-    y_pred = estimator.predict(test_X)
-    print("F1 Score: ", sklearn.metrics.f1_score(test_y, y_pred, average='macro'))
-    print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
-    print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
+    # print("Area Under Curve: ", sklearn.metrics.roc_auc_score(test_y, y_pred))
+    # print("Accuracy: ", sklearn.metrics.accuracy_score(test_y, y_pred))
+    # print("Recall: ", sklearn.metrics.recall_score(test_y, y_pred))
+    # print("Precision: ", sklearn.metrics.precision_score(test_y, y_pred))
 
 
 if __name__ == '__main__':
@@ -170,10 +154,12 @@ if __name__ == '__main__':
     # Load data
     df, cancellation_labels = load_data("../datasets/agoda_cancellation_train.csv")
 
-    # train part
-    hunger_games()
+    # train_X, test_X, train_y, test_y = sklearn.model_selection.train_test_split(df, cancellation_labels, test_size=0.2)
 
-    # submission part
-    # estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
-    # test_set = pd.read_csv("/Users/aryehnailand/Desktop/HUJICSdegree/Sem5/IML/IML.HUJI/challenge/test_set_week_1.csv").drop_duplicates()
-    # evaluate_and_export(estimator, testing_preprocessor(test_set), "342473642_206200552_316457340.csv", 0)
+    # Fit model over data
+    estimator = AgodaCancellationEstimator().fit(df, cancellation_labels)
+
+    # Store model predictions over test set
+    test_set = pd.read_csv("test_set_week_3.csv").drop_duplicates()
+    evaluate_and_export(estimator, testing_preprocessor(test_set),
+                        "../../../../../../Downloads/challenge/342473642_206200552_316457340.csv", 0)
