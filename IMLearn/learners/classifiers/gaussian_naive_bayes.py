@@ -1,6 +1,8 @@
 from typing import NoReturn
 from ...base import BaseEstimator
 import numpy as np
+from IMLearn.metrics.loss_functions import misclassification_error
+
 
 class GaussianNaiveBayes(BaseEstimator):
     """
@@ -39,7 +41,10 @@ class GaussianNaiveBayes(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        self.classes_, counts = np.unique(y, return_counts=True)
+        self.mu_ = np.asarray([np.mean(X[y == k], axis=0) for k in self.classes_])
+        self.vars_ = np.asarray([np.var(X[y == k], axis=0) for k in self.classes_])
+        self.pi_ = counts / y.size  # num of times each element featured divided by num items in y
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -55,7 +60,7 @@ class GaussianNaiveBayes(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        return np.argmax(self.likelihood(X), axis=1)
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -74,8 +79,18 @@ class GaussianNaiveBayes(BaseEstimator):
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
+        likelihood = []
+        num_features = X.shape[1]
+        for k in range(self.classes_.size):
+            x_minus_mu = X - self.mu_[k]
+            cov = np.diag(self.vars_[k])
+            inv_cov = np.linalg.inv(cov)
+            prob_vec_comp = np.log(self.pi_[k])
+            exponent = -0.5 * np.einsum('ij, ji->i', x_minus_mu @ inv_cov, x_minus_mu.T)
+            z = -0.5 * np.log(np.linalg.det(cov) * (2 * np.pi) ** num_features)
+            likelihood.append(exponent + z + prob_vec_comp)
 
-        raise NotImplementedError()
+        return np.asarray(likelihood).T
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -94,5 +109,5 @@ class GaussianNaiveBayes(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        from ...metrics import misclassification_error
-        raise NotImplementedError()
+        y_pred = self._predict(X)
+        return misclassification_error(y_pred, y)
