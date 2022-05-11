@@ -108,10 +108,12 @@ class DecisionStump(BaseEstimator):
         values, labels = values[sort_idx], labels[sort_idx]
         # if we take everything to be sign -> start from left
         min_threshold_loss = np.sum(np.abs(labels[np.sign(labels) != sign]))
-        # need one lower and one higher for edge cases
-        possible_thresholds = np.hstack(([values[0] - 1], values, [values[-1] + 1]))
+        # need -inf + inf for edge cases and we take in between each two values
+        in_between_thresholds = 0.5 * (values[1:]+values[:-1])
+        possible_thresholds = np.hstack(([[-np.inf], in_between_thresholds, [np.inf]]))
         # count left to right with cum sum
-        losses = np.hstack((min_threshold_loss, min_threshold_loss - np.cumsum(labels * sign)))
+        cumulative_losses = np.cumsum(labels * sign) + min_threshold_loss
+        losses = np.hstack((min_threshold_loss, cumulative_losses))
         # take index with the minimum loss
         min_loss_idx = np.argmin(losses)
         return possible_thresholds[min_loss_idx], losses[min_loss_idx]

@@ -76,7 +76,7 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
         )
         acc = np.round(1 - misclassification_error(test_y, adaboost.partial_predict(test_X, t)), 3)
         fig.layout.annotations[i].update(text=f'{t} Iterations, accuracy: {acc}')
-    fig.update_layout(width=700, height=900,
+    fig.update_layout(width=800, height=1000,
                       title=rf"$\textbf{{AdaBoost Decision Boundary based on number of Learners: noise={noise}}}$",
                       margin=dict(t=100))
     fig.update_xaxes(matches='x', range=[-1, 1], constrain="domain")
@@ -90,7 +90,6 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     fig = go.Figure(
         [decision_surface(lambda x: adaboost.partial_predict(x, best_ensemble_t), lims[0], lims[1], showscale=False, colorscale=COLOR_SCALE),
          test_set_data_points_scattered])
-    # todo check these
     fig.update_xaxes(matches='x', range=[-1, 1], constrain="domain")
     fig.update_yaxes(matches='y', range=[-1, 1], constrain="domain", scaleanchor="x", scaleratio=1)
     fig.update_layout(title_text=f"Best Ensemble Size: {best_ensemble_t}, Accuracy: {acc}")
